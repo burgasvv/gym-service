@@ -1,0 +1,130 @@
+
+
+
+### Identity Requests
+
+
+
+###
+POST /api/v1/identities/create
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "authority": "ADMIN",
+    "email": "burgasvv@gmail.com",
+    "password": "burgasvv",
+    "firstname": "Burgas",
+    "lastname": "Vyacheslav",
+    "patronymic": "Vasil'evich"
+}
+
+###
+GET /api/v1/identities/by-id?identityId=6530271d-306d-4de6-8786-425df748a4f2
+Host: localhost:9000
+Accept: application/json
+
+###
+GET /api/v1/identities
+Host: localhost:9000
+Accept: application/json
+
+###
+PUT /api/v1/identities/update
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "id": "6530271d-306d-4de6-8786-425df748a4f2",
+    "password": "burgasvv"
+}
+
+###
+DELETE /api/v1/identities/delete?identityId=0754aa68-7979-4712-afde-c2b75de21fca
+Host: localhost:9000
+Accept: application/json
+
+
+
+### Gym Requests
+
+
+
+###
+POST /api/v1/gyms/create
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "name": "Testable Gym",
+    "description": "Description of Testable Gym"
+}
+
+###
+GET /api/v1/gyms
+Host: localhost:9000
+Accept: application/json
+
+###
+GET /api/v1/gyms/by-id?gymId=39b5ad50-fd21-4013-9fd3-99e33a77ef4a
+Host: localhost:9000
+Accept: application/json
+
+###
+PUT /api/v1/gyms/update
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "id": "52a1e792-c099-4d3b-8e51-b46ab695f70a",
+    "description": "Description and year of Testable Gym"
+}
+
+###
+DELETE /api/v1/gyms/delete?gymId=52a1e792-c099-4d3b-8e51-b46ab695f70a
+Host: localhost:9000
+Accept: application/json
+
+
+
+### Location Requests
+
+
+
+###
+POST /api/v1/locations/create
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "gymId": "39b5ad50-fd21-4013-9fd3-99e33a77ef4a",
+    "address": "Saint-Petersburg, Rostova street 26, house 105b",
+    "open": "09:00",
+    "close": "21:00"
+}
+
+###
+GET /api/v1/locations/by-id?locationId=4c68c461-b6b5-48e6-925b-68c4ece4afd7
+Host: localhost:9000
+Accept: application/json
+
+###
+GET /api/v1/locations
+Host: localhost:9000
+Accept: application/json
+
+###
+PUT /api/v1/locations/update
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "id": "4c68c461-b6b5-48e6-925b-68c4ece4afd7",
+    "close": "22:00"
+}
