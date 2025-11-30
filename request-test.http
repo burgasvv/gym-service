@@ -128,3 +128,38 @@ Content-Type: application/json
     "id": "4c68c461-b6b5-48e6-925b-68c4ece4afd7",
     "close": "22:00"
 }
+
+
+
+### Employee Requests
+
+
+
+###
+POST /api/v1/employees/create
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "identityId": "6530271d-306d-4de6-8786-425df748a4f2",
+    "position": "DIRECTOR",
+    "birthday": "1993-01-10",
+    "address": "Novosibirsk, Ivanova 28, 48"
+}
+
+###
+GET /api/v1/employees/by-id?employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+Host: localhost:9000
+Accept: application/json
+
+###
+PUT /api/v1/employees/update
+Host: localhost:9000
+Accept: application/json
+Content-Type: application/json
+
+{
+    "id": "937aad98-6dc5-4b1d-9a18-568b832c0c7c",
+    "position": "DIRECTOR"
+}

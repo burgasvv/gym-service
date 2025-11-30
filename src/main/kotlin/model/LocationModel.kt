@@ -24,6 +24,7 @@ class Location(id: EntityID<UUID>) : UUIDEntity(id) {
     var address by Locations.address
     var open by Locations.open
     var close by Locations.close
+    val employees by Employee via LocationsEmployees
 }
 
 @Serializable
@@ -47,11 +48,22 @@ data class LocationShortResponse(
 )
 
 @Serializable
-data class LocationFullResponse(
+data class LocationWithGymResponse(
     @Serializable(with = UUIDSerialization::class)
     val id: UUID? = null,
     val gym: GymShortResponse? = null,
     val address: String? = null,
     val open: String? = null,
     val close: String? = null
+)
+
+@Serializable
+data class LocationFullResponse(
+    @Serializable(with = UUIDSerialization::class)
+    val id: UUID? = null,
+    val gym: GymShortResponse? = null,
+    val address: String? = null,
+    val open: String? = null,
+    val close: String? = null,
+    val employees: List<EmployeeWithIdentityResponse>? = null
 )

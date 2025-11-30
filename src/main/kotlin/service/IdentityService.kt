@@ -9,8 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.burgas.config.DatabaseFactory
 import org.burgas.model.Identity
+import org.burgas.model.IdentityFullResponse
 import org.burgas.model.IdentityRequest
-import org.burgas.model.IdentityResponse
+import org.burgas.model.IdentityShortResponse
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.sql.Connection
 import java.util.*
@@ -33,8 +34,8 @@ fun Identity.update(identityRequest: IdentityRequest) {
     this.patronymic = identityRequest.patronymic ?: this.patronymic
 }
 
-fun Identity.toIdentityResponse(): IdentityResponse {
-    return IdentityResponse(
+fun Identity.toIdentityShortResponse(): IdentityShortResponse {
+    return IdentityShortResponse(
         id = this.id.value,
         authority = this.authority,
         email = this.email,
@@ -42,6 +43,19 @@ fun Identity.toIdentityResponse(): IdentityResponse {
         lastname = this.lastname,
         patronymic = this.patronymic,
         isActive = this.isActive
+    )
+}
+
+fun Identity.toIdentityFullResponse(): IdentityFullResponse {
+    return IdentityFullResponse(
+        id = this.id.value,
+        authority = this.authority,
+        email = this.email,
+        firstname = this.firstname,
+        lastname = this.lastname,
+        patronymic = this.patronymic,
+        isActive = this.isActive,
+        employee = this.employee.singleOrNull()?.toEmployeeNoIdentityResponse()
     )
 }
 
@@ -56,13 +70,13 @@ class IdentityService {
     suspend fun findById(identityId: UUID) = withContext(Dispatchers.Default) {
         transaction(db = DatabaseFactory.postgres, readOnly = true) {
             (Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found"))
-                .toIdentityResponse()
+                .toIdentityFullResponse()
         }
     }
 
     suspend fun findAll() = withContext(Dispatchers.Default) {
         transaction(db = DatabaseFactory.postgres, readOnly = true) {
-            Identity.all().map { identity -> identity.toIdentityResponse() }.toHashSet()
+            Identity.all().map { identity -> identity.toIdentityShortResponse() }
         }
     }
 

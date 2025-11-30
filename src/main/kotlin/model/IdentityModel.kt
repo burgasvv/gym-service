@@ -32,6 +32,7 @@ class Identity(id: EntityID<UUID>) : UUIDEntity(id) {
     var lastname by Identities.lastname
     var patronymic by Identities.patronymic
     var isActive by Identities.isActive
+    val employee by Employee referrersOn Employees.identity
 }
 
 @Serializable
@@ -48,7 +49,7 @@ data class IdentityRequest(
 )
 
 @Serializable
-data class IdentityResponse(
+data class IdentityShortResponse(
     @Serializable(with = UUIDSerialization::class)
     val id: UUID? = null,
     val authority: Authority? = null,
@@ -57,4 +58,17 @@ data class IdentityResponse(
     val lastname: String? = null,
     val patronymic: String? = null,
     val isActive: Boolean? = null
+)
+
+@Serializable
+data class IdentityFullResponse(
+    @Serializable(with = UUIDSerialization::class)
+    val id: UUID? = null,
+    val authority: Authority? = null,
+    val email: String? = null,
+    val firstname: String? = null,
+    val lastname: String? = null,
+    val patronymic: String? = null,
+    val isActive: Boolean? = null,
+    val employee: EmployeeNoIdentityResponse? = null
 )

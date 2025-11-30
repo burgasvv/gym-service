@@ -1,20 +1,16 @@
 package org.burgas.service
 
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.toJavaLocalTime
 import kotlinx.datetime.toKotlinLocalTime
 import org.burgas.config.DatabaseFactory
-import org.burgas.model.Gym
-import org.burgas.model.Location
-import org.burgas.model.LocationRequest
-import org.burgas.model.LocationFullResponse
-import org.burgas.model.LocationShortResponse
+import org.burgas.model.*
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.sql.Connection
 import java.time.format.DateTimeFormatter
@@ -50,6 +46,17 @@ fun Location.toLocationFullResponse(): LocationFullResponse {
         gym = this.gym.toGymShortResponse(),
         address = this.address,
         open = this.open.format(DateTimeFormatter.ofPattern("hh:mm")),
+        close = this.close.format(DateTimeFormatter.ofPattern("hh:mm")),
+        employees = this.employees.map { employee -> employee.toEmployeeWithIdentityResponse() }
+    )
+}
+
+fun Location.toLocationWithGymResponse(): LocationWithGymResponse {
+    return LocationWithGymResponse(
+        id = this.id.value,
+        gym = this.gym.toGymShortResponse(),
+        address = this.address,
+        open = this.open.format(DateTimeFormatter.ofPattern("hh:mm")),
         close = this.close.format(DateTimeFormatter.ofPattern("hh:mm"))
     )
 }
@@ -64,7 +71,8 @@ class LocationService {
 
     suspend fun findById(locationId: UUID) = withContext(Dispatchers.Default) {
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            (Location.findById(locationId) ?: throw IllegalArgumentException("Location not found")).toLocationFullResponse()
+            (Location.findById(locationId)
+                ?: throw IllegalArgumentException("Location not found")).toLocationFullResponse()
         }
     }
 
