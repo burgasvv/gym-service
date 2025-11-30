@@ -75,6 +75,13 @@ class EmployeeService {
         }
     }
 
+    suspend fun findByLocation(locationId: UUID) = withContext(Dispatchers.Default) {
+        transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            (Location.findById(locationId) ?: throw IllegalArgumentException("Location not found"))
+                .employees.map { employee -> employee.toEmployeeWithIdentityResponse() }
+        }
+    }
+
     suspend fun findById(employeeId: UUID) = withContext(Dispatchers.Default) {
         transaction(db = DatabaseFactory.postgres, readOnly = true) {
             (Employee.findById(employeeId) ?: throw IllegalArgumentException("Employee not found"))
@@ -109,6 +116,11 @@ fun Application.configureEmployeeRouter() {
                 val employeeRequest = call.receive(EmployeeRequest::class)
                 employeeService.create(employeeRequest)
                 call.respond(HttpStatusCode.Created)
+            }
+
+            get("/by-location") {
+                val locationId = UUID.fromString(call.parameters["locationId"])
+                call.respond(HttpStatusCode.OK, employeeService.findByLocation(locationId))
             }
 
             get("/by-id") {

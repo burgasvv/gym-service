@@ -1,4 +1,9 @@
 
+###
+GET /api/v1/security/csrf-token
+Host: localhost:9000
+Accept: application/json
+
 
 
 ### Identity Requests
@@ -100,12 +105,14 @@ POST /api/v1/locations/create
 Host: localhost:9000
 Accept: application/json
 Content-Type: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: b727a751-b9fe-4c2c-b047-9923f1d4adc0
 
 {
     "gymId": "39b5ad50-fd21-4013-9fd3-99e33a77ef4a",
-    "address": "Saint-Petersburg, Rostova street 26, house 105b",
+    "address": "Novosibirsk, Russkaya 23, 56/2",
     "open": "09:00",
-    "close": "21:00"
+    "close": "22:00"
 }
 
 ###
@@ -128,6 +135,16 @@ Content-Type: application/json
     "id": "4c68c461-b6b5-48e6-925b-68c4ece4afd7",
     "close": "22:00"
 }
+
+###
+POST /api/v1/locations/add-employees?locationId=9687b7ef-ec64-498e-bc89-1541e9491c5d&employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+Host: localhost:9000
+Accept: application/json
+
+###
+DELETE /api/v1/locations/remove-employees?locationId=9687b7ef-ec64-498e-bc89-1541e9491c5d&employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+Host: localhost:9000
+Accept: application/json
 
 
 
