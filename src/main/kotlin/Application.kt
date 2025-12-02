@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burgas.config.DatabaseFactory
 import org.burgas.model.Employee
+import org.burgas.plugin.configureAuthentication
 import org.burgas.plugin.configureMigrations
 import org.burgas.plugin.configureRouting
 import org.burgas.plugin.configureSerialization
@@ -26,6 +27,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureSerialization()
     configureMigrations()
+    configureAuthentication()
     configureRouting()
 
     configureIdentityRouter()

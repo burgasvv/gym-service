@@ -13,13 +13,17 @@ import org.burgas.model.IdentityFullResponse
 import org.burgas.model.IdentityRequest
 import org.burgas.model.IdentityShortResponse
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.mindrot.jbcrypt.BCrypt
 import java.sql.Connection
 import java.util.*
 
 fun Identity.insert(identityRequest: IdentityRequest) {
     this.authority = identityRequest.authority ?: throw IllegalArgumentException("Authority is null")
     this.email = identityRequest.email ?: throw IllegalArgumentException("Email is null")
-    this.password = identityRequest.password ?: throw IllegalArgumentException("Password is null")
+    this.password = BCrypt.hashpw(
+        identityRequest.password ?: throw IllegalArgumentException("Password is null"),
+        BCrypt.gensalt()
+    )
     this.firstname = identityRequest.firstname ?: throw IllegalArgumentException("Firstname is null")
     this.lastname = identityRequest.lastname ?: throw IllegalArgumentException("Lastname is null")
     this.patronymic = identityRequest.patronymic ?: throw IllegalArgumentException("Patronymic is null")
@@ -28,7 +32,6 @@ fun Identity.insert(identityRequest: IdentityRequest) {
 fun Identity.update(identityRequest: IdentityRequest) {
     this.authority = identityRequest.authority ?: this.authority
     this.email = identityRequest.email ?: this.email
-    this.password = identityRequest.password ?: this.password
     this.firstname = identityRequest.firstname ?: this.firstname
     this.lastname = identityRequest.lastname ?: this.lastname
     this.patronymic = identityRequest.patronymic ?: this.patronymic
@@ -94,6 +97,34 @@ class IdentityService {
                 .delete()
         }
     }
+
+    suspend fun changePassword(identityRequest: IdentityRequest) = withContext(Dispatchers.Default) {
+        transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+            val newPassword = identityRequest.password ?: throw IllegalArgumentException("Identity password is null")
+            val identity = Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found")
+            if (BCrypt.checkpw(newPassword, identity.password)) {
+                throw IllegalArgumentException("Passwords matched")
+            }
+            identity.apply {
+                this.password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+            }
+        }
+    }
+
+    suspend fun changeStatus(identityRequest: IdentityRequest) = withContext(Dispatchers.Default) {
+        transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+            val status = identityRequest.isActive ?: throw IllegalArgumentException("Is active is null")
+            val identity = Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found")
+            if (identity.isActive == status) {
+                throw IllegalArgumentException("Identity status matched")
+            }
+            identity.apply {
+                this.isActive = status
+            }
+        }
+    }
 }
 
 fun Application.configureIdentityRouter() {
@@ -128,6 +159,18 @@ fun Application.configureIdentityRouter() {
             delete("/delete") {
                 val identityId = UUID.fromString(call.parameters["identityId"])
                 identityService.delete(identityId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            put("/change-password") {
+                val identityRequest = call.receive(IdentityRequest::class)
+                identityService.changePassword(identityRequest)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            put("/change-status") {
+                val identityRequest = call.receive(IdentityRequest::class)
+                identityService.changeStatus(identityRequest)
                 call.respond(HttpStatusCode.OK)
             }
         }

@@ -29,6 +29,7 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-serialization-kotlinx-json")
+    implementation("io.ktor:ktor-client-cio:3.3.2")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
@@ -43,6 +44,9 @@ dependencies {
     implementation("io.ktor:ktor-server-sessions:3.3.2")
     implementation("io.ktor:ktor-server-csrf:3.3.2")
     implementation("io.ktor:ktor-server-cors:3.3.2")
+    implementation("io.ktor:ktor-server-auth:3.3.2")
+    implementation("io.ktor:ktor-client-cio-jvm:3.3.2")
+    implementation("io.ktor:ktor-client-apache:3.3.2")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 }

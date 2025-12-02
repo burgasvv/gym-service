@@ -11,6 +11,11 @@ import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.burgas.config.DatabaseFactory
 import org.burgas.model.*
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.sql.Connection
 import java.time.LocalDate
@@ -102,6 +107,31 @@ class EmployeeService {
             (Employee.findById(employeeId) ?: throw IllegalArgumentException("Employee not found")).delete()
         }
     }
+
+    suspend fun addLocations(employeeId: UUID, locationsIds: List<UUID>) = withContext(Dispatchers.Default) {
+        transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val employee = Employee.findById(employeeId) ?: throw IllegalArgumentException("Employee not found")
+            val locations = Location.find { Locations.id inList locationsIds }.toList()
+            locations.forEach { location ->
+                LocationsEmployees.insert { insertStatement ->
+                    insertStatement[LocationsEmployees.location] = location.id
+                    insertStatement[LocationsEmployees.employee] = employee.id
+                }
+            }
+        }
+    }
+
+    suspend fun removeLocations(employeeId: UUID, locationsIds: List<UUID>) = withContext(Dispatchers.Default) {
+        transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val employee = Employee.findById(employeeId) ?: throw IllegalArgumentException("Employee not found")
+            val locations = Location.find { Locations.id inList locationsIds }.toList()
+            locations.forEach { location ->
+                LocationsEmployees.deleteWhere {
+                    (LocationsEmployees.location eq location.id) and (LocationsEmployees.employee eq employee.id)
+                }
+            }
+        }
+    }
 }
 
 fun Application.configureEmployeeRouter() {
@@ -137,6 +167,22 @@ fun Application.configureEmployeeRouter() {
             delete("/delete") {
                 val employeeId = UUID.fromString(call.parameters["employeeId"])
                 employeeService.delete(employeeId)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            post("/add-locations") {
+                val employeeId = UUID.fromString(call.parameters["employeeId"])
+                val locationIds = (call.parameters.getAll("locationId")?.map { UUID.fromString(it) }
+                    ?: throw IllegalArgumentException("Location ids is null"))
+                employeeService.addLocations(employeeId, locationIds)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            delete("/remove-locations") {
+                val employeeId = UUID.fromString(call.parameters["employeeId"])
+                val locationIds = (call.parameters.getAll("locationId")?.map { UUID.fromString(it) }
+                    ?: throw IllegalArgumentException("Location ids is null"))
+                employeeService.removeLocations(employeeId, locationIds)
                 call.respond(HttpStatusCode.OK)
             }
         }

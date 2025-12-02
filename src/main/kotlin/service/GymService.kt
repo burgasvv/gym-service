@@ -2,9 +2,12 @@ package org.burgas.service
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.get
+import io.ktor.server.sessions.sessions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.burgas.config.DatabaseFactory
@@ -12,6 +15,7 @@ import org.burgas.model.Gym
 import org.burgas.model.GymFullResponse
 import org.burgas.model.GymRequest
 import org.burgas.model.GymShortResponse
+import org.burgas.plugin.GithubUser
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.sql.Connection
 import java.time.LocalDateTime
@@ -91,31 +95,44 @@ fun Application.configureGymRouter() {
 
         route("/api/v1/gyms") {
 
-            post("/create") {
-                val gymRequest = call.receive(GymRequest::class)
-                gymService.create(gymRequest)
-                call.respond(HttpStatusCode.Created)
+            get {
+                val githubUser: GithubUser? = call.sessions.get()
+                if (githubUser != null) {
+                    call.respond(HttpStatusCode.OK, gymService.findAll())
+                } else {
+                    call.respondRedirect("/api/v1/security/oauth/login")
+                }
             }
 
             get("/by-id") {
-                val gymId = UUID.fromString(call.parameters["gymId"])
-                call.respond(HttpStatusCode.OK, gymService.findById(gymId))
+                val githubUser: GithubUser? = call.sessions.get()
+                if (githubUser != null) {
+                    val gymId = UUID.fromString(call.parameters["gymId"])
+                    call.respond(HttpStatusCode.OK, gymService.findById(gymId))
+                } else {
+                    call.respondRedirect("/api/v1/security/oauth/login")
+                }
             }
 
-            get {
-                call.respond(HttpStatusCode.OK, gymService.findAll())
-            }
+            authenticate("basic-all-authenticated") {
 
-            put("/update") {
-                val gymRequest = call.receive(GymRequest::class)
-                gymService.update(gymRequest)
-                call.respond(HttpStatusCode.OK)
-            }
+                post("/create") {
+                    val gymRequest = call.receive(GymRequest::class)
+                    gymService.create(gymRequest)
+                    call.respond(HttpStatusCode.Created)
+                }
 
-            delete("/delete") {
-                val gymId = UUID.fromString(call.parameters["gymId"])
-                gymService.delete(gymId)
-                call.respond(HttpStatusCode.OK)
+                put("/update") {
+                    val gymRequest = call.receive(GymRequest::class)
+                    gymService.update(gymRequest)
+                    call.respond(HttpStatusCode.OK)
+                }
+
+                delete("/delete") {
+                    val gymId = UUID.fromString(call.parameters["gymId"])
+                    gymService.delete(gymId)
+                    call.respond(HttpStatusCode.OK)
+                }
             }
         }
     }

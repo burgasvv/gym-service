@@ -15,6 +15,8 @@ POST /api/v1/identities/create
 Host: localhost:9000
 Accept: application/json
 Content-Type: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: 8e591445-7f18-42ab-b9c1-8c31ae9855da
 
 {
     "authority": "ADMIN",
@@ -72,6 +74,7 @@ Content-Type: application/json
 GET /api/v1/gyms
 Host: localhost:9000
 Accept: application/json
+Authorization: Basic burgasvv@gmail.com burgasvv
 
 ###
 GET /api/v1/gyms/by-id?gymId=39b5ad50-fd21-4013-9fd3-99e33a77ef4a
@@ -116,7 +119,7 @@ X-Csrf-Token: b727a751-b9fe-4c2c-b047-9923f1d4adc0
 }
 
 ###
-GET /api/v1/locations/by-id?locationId=4c68c461-b6b5-48e6-925b-68c4ece4afd7
+GET /api/v1/locations/by-id?locationId=9687b7ef-ec64-498e-bc89-1541e9491c5d
 Host: localhost:9000
 Accept: application/json
 
@@ -157,9 +160,11 @@ POST /api/v1/employees/create
 Host: localhost:9000
 Accept: application/json
 Content-Type: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: 685c63ef-c34a-40d2-8ec4-b9bd621b94f5
 
 {
-    "identityId": "6530271d-306d-4de6-8786-425df748a4f2",
+    "identityId": "c062d8f6-6a54-4f7c-a5ef-01cd3919c225",
     "position": "DIRECTOR",
     "birthday": "1993-01-10",
     "address": "Novosibirsk, Ivanova 28, 48"
@@ -180,3 +185,19 @@ Content-Type: application/json
     "id": "937aad98-6dc5-4b1d-9a18-568b832c0c7c",
     "position": "DIRECTOR"
 }
+
+###
+POST /api/v1/employees/add-locations?employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+    &locationId=9687b7ef-ec64-498e-bc89-1541e9491c5d&locationId=ff426a48-f3d8-4d8c-a75a-fadd949a559b
+Host: localhost:9000
+Accept: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: 878faf1c-01dd-492b-a202-73f779a198b2
+
+###
+DELETE /api/v1/employees/remove-locations?employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+    &locationId=9687b7ef-ec64-498e-bc89-1541e9491c5d&locationId=ff426a48-f3d8-4d8c-a75a-fadd949a559b
+Host: localhost:9000
+Accept: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: 5fc7449f-cbf6-417a-997d-88d38057478b
