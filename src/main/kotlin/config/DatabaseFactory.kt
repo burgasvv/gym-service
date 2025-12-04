@@ -1,6 +1,7 @@
 package org.burgas.config
 
 import org.jetbrains.exposed.v1.jdbc.Database
+import redis.clients.jedis.Jedis
 
 class DatabaseFactory {
 
@@ -11,5 +12,7 @@ class DatabaseFactory {
             user = "postgres",
             password = "postgres"
         )
+
+        val jedis: Jedis = Jedis("localhost", 6379)
     }
 }

@@ -10,6 +10,7 @@ import io.ktor.server.sessions.get
 import io.ktor.server.sessions.sessions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import org.burgas.config.DatabaseFactory
 import org.burgas.model.Gym
 import org.burgas.model.GymFullResponse
@@ -61,8 +62,19 @@ class GymService {
     }
 
     suspend fun findById(gymId: UUID) = withContext(Dispatchers.Default) {
-        transaction(db = DatabaseFactory.postgres, readOnly = true) {
-            (Gym.findById(gymId) ?: throw IllegalArgumentException("Gym not found")).toGymFullResponse()
+        val jedis = DatabaseFactory.jedis
+        val json = Json { ignoreUnknownKeys = true }
+        val gymFullResponseString = jedis.get("gymFullResponse:$gymId")
+        if (gymFullResponseString != null) {
+            json.decodeFromString<GymFullResponse>(gymFullResponseString)
+        } else {
+            transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                val gymFullResponse =
+                    (Gym.findById(gymId) ?: throw IllegalArgumentException("Gym not found")).toGymFullResponse()
+                val gymFullResponseString = json.encodeToString(gymFullResponse)
+                jedis.set("gymFullResponse${gymFullResponse.id}", gymFullResponseString)
+                gymFullResponse
+            }
         }
     }
 
@@ -74,6 +86,11 @@ class GymService {
 
     suspend fun update(gymRequest: GymRequest) = withContext(Dispatchers.Default) {
         val gymId = gymRequest.id ?: throw IllegalArgumentException("Gym id is null")
+        val jedis = DatabaseFactory.jedis
+        val gymFullResponseString = jedis.get("gymFullResponse:$gymId")
+        if (gymFullResponseString != null) {
+            jedis.del("gymFullResponse:$gymId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             (Gym.findById(gymId) ?: throw IllegalArgumentException("Gym not found"))
                 .apply { update(gymRequest) }
@@ -81,6 +98,11 @@ class GymService {
     }
 
     suspend fun delete(gymId: UUID) = withContext(Dispatchers.Default) {
+        val jedis = DatabaseFactory.jedis
+        val gymFullResponseString = jedis.get("gymFullResponse:$gymId")
+        if (gymFullResponseString != null) {
+            jedis.del("gymFullResponse:$gymId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             (Gym.findById(gymId) ?: throw IllegalArgumentException("Gym not found")).delete()
         }

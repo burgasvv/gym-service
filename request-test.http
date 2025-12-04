@@ -133,10 +133,12 @@ PUT /api/v1/locations/update
 Host: localhost:9000
 Accept: application/json
 Content-Type: application/json
+Origin: http://localhost:9000
+X-Csrf-Token: 138b2b73-f83b-4c80-b203-88f3227aad22
 
 {
-    "id": "4c68c461-b6b5-48e6-925b-68c4ece4afd7",
-    "close": "22:00"
+    "id": "9687b7ef-ec64-498e-bc89-1541e9491c5d",
+    "close": "21:00"
 }
 
 ###
@@ -171,7 +173,7 @@ X-Csrf-Token: 685c63ef-c34a-40d2-8ec4-b9bd621b94f5
 }
 
 ###
-GET /api/v1/employees/by-id?employeeId=937aad98-6dc5-4b1d-9a18-568b832c0c7c
+GET /api/v1/employees/by-id?employeeId=09113559-c96e-46fd-9ac6-702108669ce0
 Host: localhost:9000
 Accept: application/json
 

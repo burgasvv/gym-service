@@ -2,11 +2,13 @@ package org.burgas.service
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import org.burgas.config.DatabaseFactory
 import org.burgas.model.Identity
 import org.burgas.model.IdentityFullResponse
@@ -71,9 +73,20 @@ class IdentityService {
     }
 
     suspend fun findById(identityId: UUID) = withContext(Dispatchers.Default) {
-        transaction(db = DatabaseFactory.postgres, readOnly = true) {
-            (Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found"))
-                .toIdentityFullResponse()
+        val jedis = DatabaseFactory.jedis
+        val json = Json { ignoreUnknownKeys = true }
+        val identityFullResponseString = jedis.get("identityFullResponse:$identityId")
+        if (identityFullResponseString != null) {
+            json.decodeFromString<IdentityFullResponse>(identityFullResponseString)
+        } else {
+            transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                val identityFullResponse =
+                    (Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found"))
+                        .toIdentityFullResponse()
+                val identityFullResponseString = json.encodeToString(identityFullResponse)
+                jedis.set("identityFullResponse:${identityFullResponse.id}", identityFullResponseString)
+                identityFullResponse
+            }
         }
     }
 
@@ -85,6 +98,11 @@ class IdentityService {
 
     suspend fun update(identityRequest: IdentityRequest) = withContext(Dispatchers.Default) {
         val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+        val jedis = DatabaseFactory.jedis
+        val identityFullResponseString = jedis.get("identityFullResponse:$identityId")
+        if (identityFullResponseString != null) {
+            jedis.del("identityFullResponse:$identityId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             (Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found"))
                 .apply { update(identityRequest) }
@@ -92,6 +110,11 @@ class IdentityService {
     }
 
     suspend fun delete(identityId: UUID) = withContext(Dispatchers.Default) {
+        val jedis = DatabaseFactory.jedis
+        val identityFullResponseString = jedis.get("identityFullResponse:$identityId")
+        if (identityFullResponseString != null) {
+            jedis.del("identityFullResponse:$identityId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             (Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found"))
                 .delete()
@@ -99,9 +122,14 @@ class IdentityService {
     }
 
     suspend fun changePassword(identityRequest: IdentityRequest) = withContext(Dispatchers.Default) {
+        val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+        val newPassword = identityRequest.password ?: throw IllegalArgumentException("Identity password is null")
+        val jedis = DatabaseFactory.jedis
+        val identityFullResponseString = jedis.get("identityFullResponse:$identityId")
+        if (identityFullResponseString != null) {
+            jedis.del("identityFullResponse:$identityId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
-            val newPassword = identityRequest.password ?: throw IllegalArgumentException("Identity password is null")
             val identity = Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found")
             if (BCrypt.checkpw(newPassword, identity.password)) {
                 throw IllegalArgumentException("Passwords matched")
@@ -113,9 +141,14 @@ class IdentityService {
     }
 
     suspend fun changeStatus(identityRequest: IdentityRequest) = withContext(Dispatchers.Default) {
+        val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+        val status = identityRequest.isActive ?: throw IllegalArgumentException("Is active is null")
+        val jedis = DatabaseFactory.jedis
+        val identityFullResponseString = jedis.get("identityFullResponse:$identityId")
+        if (identityFullResponseString != null) {
+            jedis.del("identityFullResponse:$identityId")
+        }
         transaction(db = DatabaseFactory.postgres, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
-            val status = identityRequest.isActive ?: throw IllegalArgumentException("Is active is null")
             val identity = Identity.findById(identityId) ?: throw IllegalArgumentException("Identity not found")
             if (identity.isActive == status) {
                 throw IllegalArgumentException("Identity status matched")
@@ -141,37 +174,44 @@ fun Application.configureIdentityRouter() {
                 call.respond(HttpStatusCode.Created)
             }
 
-            get("/by-id") {
-                val identityId = UUID.fromString(call.parameters["identityId"])
-                call.respond(HttpStatusCode.OK, identityService.findById(identityId))
+            authenticate("basic-admin-authenticated") {
+
+                get {
+                    call.respond(HttpStatusCode.OK, identityService.findAll())
+                }
+
+                put("/change-status") {
+                    val identityRequest = call.receive(IdentityRequest::class)
+                    identityService.changeStatus(identityRequest)
+                    call.respond(HttpStatusCode.OK)
+                }
             }
 
-            get {
-                call.respond(HttpStatusCode.OK, identityService.findAll())
-            }
+            authenticate("basic-all-authenticated") {
 
-            put("/update") {
-                val identityRequest = call.receive(IdentityRequest::class)
-                identityService.update(identityRequest)
-                call.respond(HttpStatusCode.OK)
-            }
+                get("/by-id") {
+                    val identityId = UUID.fromString(call.parameters["identityId"])
+                    call.respond(HttpStatusCode.OK, identityService.findById(identityId))
+                }
 
-            delete("/delete") {
-                val identityId = UUID.fromString(call.parameters["identityId"])
-                identityService.delete(identityId)
-                call.respond(HttpStatusCode.OK)
-            }
 
-            put("/change-password") {
-                val identityRequest = call.receive(IdentityRequest::class)
-                identityService.changePassword(identityRequest)
-                call.respond(HttpStatusCode.OK)
-            }
+                put("/update") {
+                    val identityRequest = call.receive(IdentityRequest::class)
+                    identityService.update(identityRequest)
+                    call.respond(HttpStatusCode.OK)
+                }
 
-            put("/change-status") {
-                val identityRequest = call.receive(IdentityRequest::class)
-                identityService.changeStatus(identityRequest)
-                call.respond(HttpStatusCode.OK)
+                delete("/delete") {
+                    val identityId = UUID.fromString(call.parameters["identityId"])
+                    identityService.delete(identityId)
+                    call.respond(HttpStatusCode.OK)
+                }
+
+                put("/change-password") {
+                    val identityRequest = call.receive(IdentityRequest::class)
+                    identityService.changePassword(identityRequest)
+                    call.respond(HttpStatusCode.OK)
+                }
             }
         }
     }

@@ -107,7 +107,6 @@ fun Application.configureRouting() {
                         call.respondRedirect("/api/v1/security/oauth/login")
                     }
                 }
-
             }
 
             get("/oauth/authorization") {
