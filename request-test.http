@@ -16,7 +16,7 @@ Host: localhost:9000
 Accept: application/json
 Content-Type: application/json
 Origin: http://localhost:9000
-X-Csrf-Token: 8e591445-7f18-42ab-b9c1-8c31ae9855da
+X-Csrf-Token: e5354140-7fe3-4367-a9dc-9ce361b9db12
 
 {
     "authority": "ADMIN",
@@ -28,14 +28,16 @@ X-Csrf-Token: 8e591445-7f18-42ab-b9c1-8c31ae9855da
 }
 
 ###
-GET /api/v1/identities/by-id?identityId=6530271d-306d-4de6-8786-425df748a4f2
+GET /api/v1/identities/by-id?identityId=c062d8f6-6a54-4f7c-a5ef-01cd3919c225
 Host: localhost:9000
 Accept: application/json
+Authorization: Basic zagor@gmail.com zagor
 
 ###
 GET /api/v1/identities
 Host: localhost:9000
 Accept: application/json
+Authorization: Basic burgasvv@gmail.com burgasvv
 
 ###
 PUT /api/v1/identities/update

@@ -2,18 +2,18 @@ package org.burgas.service
 
 import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.burgas.config.DatabaseFactory
+import org.burgas.model.*
 import org.burgas.model.Identity
-import org.burgas.model.IdentityFullResponse
-import org.burgas.model.IdentityRequest
-import org.burgas.model.IdentityShortResponse
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 import java.sql.Connection
@@ -166,6 +166,49 @@ fun Application.configureIdentityRouter() {
 
     routing {
 
+        @Suppress("DEPRECATION")
+        intercept(ApplicationCallPipeline.Call) {
+            if (
+                call.request.path().equals("/api/v1/identities/by-id", false) ||
+                call.request.path().equals("/api/v1/identities/delete", false)
+            ) {
+                val principal = call.principal<UserPasswordCredential>()
+                    ?: throw IllegalArgumentException("Identity principal is null")
+                val identityId = UUID.fromString(call.parameters["identityId"])
+
+                val identity = transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                    Identity.find { Identities.email eq principal.name }.singleOrNull()
+                        ?: throw IllegalArgumentException("Identity not authenticated")
+                }
+                if (identityId == identity.id) {
+                    proceed()
+                } else {
+                    throw IllegalArgumentException("Identity not authorized")
+                }
+
+            } else if (
+                call.request.path().equals("/api/v1/identities/update", false) ||
+                call.request.path().equals("/api/v1/identities/change-password", false)
+            ) {
+                val principal = call.principal<UserPasswordCredential>()
+                    ?: throw IllegalArgumentException("Identity principal is null")
+                val identityRequest = call.receive(IdentityRequest::class)
+                val identityId = identityRequest.id ?: throw IllegalArgumentException("Identity id is null")
+
+                val identity = transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                    Identity.find { Identities.email eq principal.name }.singleOrNull()
+                        ?: throw IllegalArgumentException("Identity not authenticated")
+                }
+                if (identity.id == identityId) {
+                    call.attributes[AttributeKey<IdentityRequest>("identityRequest")] = identityRequest
+                    proceed()
+                } else {
+                    throw IllegalArgumentException("Identity not authorized")
+                }
+            }
+            proceed()
+        }
+
         route("/api/v1/identities") {
 
             post("/create") {
@@ -194,9 +237,8 @@ fun Application.configureIdentityRouter() {
                     call.respond(HttpStatusCode.OK, identityService.findById(identityId))
                 }
 
-
                 put("/update") {
-                    val identityRequest = call.receive(IdentityRequest::class)
+                    val identityRequest = call.attributes[AttributeKey<IdentityRequest>("identityRequest")]
                     identityService.update(identityRequest)
                     call.respond(HttpStatusCode.OK)
                 }
@@ -208,7 +250,7 @@ fun Application.configureIdentityRouter() {
                 }
 
                 put("/change-password") {
-                    val identityRequest = call.receive(IdentityRequest::class)
+                    val identityRequest = call.attributes[AttributeKey<IdentityRequest>("identityRequest")]
                     identityService.changePassword(identityRequest)
                     call.respond(HttpStatusCode.OK)
                 }

@@ -23,6 +23,17 @@ services:
     volumes:
       - redis_data:/var/lib/redis/data
 
+  gym-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "9000:9000"
+
 volumes:
   postgres_data:
   redis_data:

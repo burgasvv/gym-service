@@ -5,3 +5,8 @@ ktor:
       - org.burgas.ApplicationKt.module
   deployment:
     port: 9000
+  postgres:
+    driver: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6000/gym_service_db
+    user: postgres
+    password: postgres

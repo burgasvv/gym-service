@@ -20,7 +20,13 @@ group = "org.burgas"
 version = "0.0.1"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("io.ktor.server.netty.EngineMain")
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "org.burgas.Application.kt"
+    }
 }
 
 dependencies {

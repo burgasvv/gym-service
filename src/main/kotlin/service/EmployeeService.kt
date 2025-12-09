@@ -2,10 +2,13 @@ package org.burgas.service
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.UserPasswordCredential
 import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.principal
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.AttributeKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.toJavaLocalDate
@@ -204,12 +207,81 @@ fun Application.configureEmployeeRouter() {
 
     routing {
 
+        @Suppress("DEPRECATION")
+        intercept(ApplicationCallPipeline.Call) {
+            if (
+                call.request.path().equals("/api/v1/employees/by-id", false) ||
+                call.request.path().equals("/api/v1/employees/delete", false) ||
+                call.request.path().equals("/api/v1/employees/add-locations", false) ||
+                call.request.path().equals("/api/v1/employees/remove-locations", false)
+            ) {
+                val principal = call.principal<UserPasswordCredential>()
+                    ?: throw IllegalArgumentException("Identity principal is null")
+                val employeeId = UUID.fromString(call.parameters["employeeId"])
+
+                val employeeIdentity = transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                    Employees
+                        .leftJoin(Identities, { Employees.identity }, { Identities.id })
+                        .selectAll()
+                        .where { Identities.email eq principal.name }
+                        .singleOrNull() ?: throw IllegalArgumentException("Employee Identity not found")
+                }
+                if (employeeId == employeeIdentity[Employees.id]) {
+                    proceed()
+                } else {
+                    throw IllegalArgumentException("Identity-Employee not authorized")
+                }
+
+            } else if (
+                call.request.path().equals("/api/v1/employees/create", false) ||
+                call.request.path().equals("/api/v1/employees/update", false)
+            ) {
+                val principal = call.principal<UserPasswordCredential>()
+                    ?: throw IllegalArgumentException("Identity principal is null")
+                val employeeRequest = call.receive(EmployeeRequest::class)
+                val identityId = employeeRequest.identityId ?: throw IllegalArgumentException("Identity id is null")
+
+                val identity = transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                    Identity.find { Identities.email eq principal.name }.singleOrNull()
+                        ?: throw IllegalArgumentException("Identity not authenticated")
+                }
+                if (identity.id == identityId) {
+                    call.attributes[AttributeKey<EmployeeRequest>("employeeRequest")] = employeeRequest
+                    proceed()
+                } else {
+                    throw IllegalArgumentException("Identity not authorized")
+                }
+
+            } else if (
+                call.request.path().equals("/api/v1/employees/by-location", false)
+            ) {
+                val principal = call.principal<UserPasswordCredential>()
+                    ?: throw IllegalArgumentException("Identity principal is null")
+                val locationId = UUID.fromString(call.parameters["locationId"])
+                val locationEmployee = transaction(db = DatabaseFactory.postgres, readOnly = true) {
+                    Locations
+                        .leftJoin(LocationsEmployees, { Locations.id }, { LocationsEmployees.location })
+                        .leftJoin(Employees, { Employees.id }, { LocationsEmployees.employee })
+                        .leftJoin(Identities, { Identities.id }, { Employees.identity })
+                        .selectAll()
+                        .where { Locations.id eq locationId }
+                        .singleOrNull() ?: throw IllegalArgumentException("Not authenticated with that location")
+                }
+                if (locationEmployee[Identities.email] == principal.name) {
+                    proceed()
+                } else {
+                    throw IllegalArgumentException("Identity not authorized")
+                }
+            }
+            proceed()
+        }
+
         route("/api/v1/employees") {
 
             authenticate("basic-all-authenticated") {
 
                 post("/create") {
-                    val employeeRequest = call.receive(EmployeeRequest::class)
+                    val employeeRequest = call.attributes[AttributeKey<EmployeeRequest>("employeeRequest")]
                     employeeService.create(employeeRequest)
                     call.respond(HttpStatusCode.Created)
                 }
@@ -225,7 +297,7 @@ fun Application.configureEmployeeRouter() {
                 }
 
                 put("/update") {
-                    val employeeRequest = call.receive(EmployeeRequest::class)
+                    val employeeRequest = call.attributes[AttributeKey<EmployeeRequest>("employeeRequest")]
                     employeeService.update(employeeRequest)
                     call.respond(HttpStatusCode.OK)
                 }
